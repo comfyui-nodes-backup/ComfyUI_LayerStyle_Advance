@@ -1569,7 +1569,19 @@ def load_VITMatte_model(model_name:str, local_files_only:bool=False) -> object:
     vitmatte = VITMatteModel(model, processor)
     return vitmatte
 
-def generate_VITMatte(image:Image, trimap:Image, local_files_only:bool=False, device:str="cpu", max_megapixels:float=2.0) -> Image:
+
+def load_VITMatte_base_model(model_name:str, local_files_only:bool=False) -> object:
+    model_name = "vitmatte-base-composition-1k"
+    model_repo = "hustvl/vitmatte-base-composition-1k"
+    model_path  = check_and_download_model(model_name, model_repo)
+    from transformers import VitMatteImageProcessor, VitMatteForImageMatting
+    model = VitMatteForImageMatting.from_pretrained(model_path, local_files_only=local_files_only)
+    processor = VitMatteImageProcessor.from_pretrained(model_path, local_files_only=local_files_only)
+    vitmatte = VITMatteModel(model, processor)
+    return vitmatte
+
+def generate_VITMatte(image:Image, trimap:Image, local_files_only:bool=False, device:str="cpu",
+                      max_megapixels:float=2.0, method:str="VITMatte") -> Image:
     if image.mode != 'RGB':
         image = image.convert('RGB')
     if trimap.mode != 'L':
@@ -1585,7 +1597,7 @@ def generate_VITMatte(image:Image, trimap:Image, local_files_only:bool=False, de
         image = image.resize((target_width, target_height), Image.BILINEAR)
         trimap = trimap.resize((target_width, target_height), Image.BILINEAR)
         # log(f"vitmatte image size {width}x{height} too large, resize to {target_width}x{target_height} for processing.")
-    model_name = "hustvl/vitmatte-small-composition-1k"
+
     if device=="cpu":
         device = torch.device('cpu')
     else:
@@ -1594,7 +1606,12 @@ def generate_VITMatte(image:Image, trimap:Image, local_files_only:bool=False, de
         else:
             log("vitmatte device is set to cuda, but not available, using cpu instead.")
             device = torch.device('cpu')
-    vit_matte_model = load_VITMatte_model(model_name=model_name, local_files_only=local_files_only)
+    if method == "vitmatte-base-composition-1k":
+        model_name = "hustvl/vitmatte-base-composition-1k"
+        vit_matte_model = load_VITMatte_base_model(model_name=model_name, local_files_only=local_files_only)
+    else:
+        model_name = "hustvl/vitmatte-small-composition-1k"
+        vit_matte_model = load_VITMatte_model(model_name=model_name, local_files_only=local_files_only)
     vit_matte_model.model.to(device)
     # log(f"vitmatte processing, image size = {image.width}x{image.height}, device = {device}.")
     inputs = vit_matte_model.processor(images=image, trimaps=trimap, return_tensors="pt")
