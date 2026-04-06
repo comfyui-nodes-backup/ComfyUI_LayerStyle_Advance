@@ -43,19 +43,6 @@ def fixed_get_imports(filename) -> list[str]:
         pass
     return imports
 
-def _patch_florence2_config_compat():
-    """Patch PretrainedConfig for transformers 5.x compatibility.
-
-    In transformers 5.x, generation-related attributes like forced_bos_token_id
-    were moved to GenerationConfig and are no longer set by PretrainedConfig.
-    Florence2's custom config code accesses self.forced_bos_token_id, which
-    raises AttributeError without this patch.
-    """
-    from transformers.configuration_utils import PretrainedConfig
-    for attr in ('forced_bos_token_id', 'forced_eos_token_id'):
-        if not hasattr(PretrainedConfig, attr):
-            setattr(PretrainedConfig, attr, None)
-
 def load_model(version):
     florence_path = os.path.join(folder_paths.models_dir, "florence2")
     os.makedirs(florence_path, exist_ok=True)
@@ -68,8 +55,6 @@ def load_model(version):
         repo_id = fl2_model_repos[version]
         from huggingface_hub import snapshot_download
         snapshot_download(repo_id=repo_id, local_dir=model_path, ignore_patterns=["*.md", "*.txt"])
-
-    _patch_florence2_config_compat()
 
     try:
         with patch("transformers.dynamic_module_utils.get_imports", fixed_get_imports):
