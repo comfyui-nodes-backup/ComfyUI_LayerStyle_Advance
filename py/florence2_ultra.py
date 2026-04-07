@@ -49,7 +49,7 @@ def _load_model_v5(model_path, attention, dtype):
     """Load Florence2 model for transformers >= 5.0.0"""
     log(f"[DEBUG] _load_model_v5 called with model_path={model_path}, attention={attention}, dtype={dtype}")
     from ..florence2_models.modeling_florence2 import Florence2ForConditionalGeneration, Florence2Config
-    from transformers import CLIPImageProcessor, AutoTokenizer
+    from transformers import CLIPImageProcessor, BartTokenizerFast
     from ..florence2_models.processing_florence2 import Florence2Processor
     from accelerate import init_empty_weights
     from accelerate.utils import set_module_tensor_to_device
@@ -109,15 +109,15 @@ def _load_model_v5(model_path, attention, dtype):
 
     log(f"[DEBUG] Loading tokenizer from {model_path}")
     try:
-        tokenizer = AutoTokenizer.from_pretrained(model_path)
-    except TypeError as e:
-        log(f"[DEBUG] AutoTokenizer failed ({e}), loading from tokenizer.json directly", message_type='warning')
+        tokenizer = BartTokenizerFast.from_pretrained(model_path)
+    except (TypeError, Exception) as e:
+        log(f"[DEBUG] BartTokenizerFast failed ({e}), loading from tokenizer.json directly", message_type='warning')
         from tokenizers import Tokenizer as TokenizerFast
         from transformers import PreTrainedTokenizerFast
+        import json
         tokenizer_json = os.path.join(model_path, "tokenizer.json")
         base_tokenizer = TokenizerFast.from_file(tokenizer_json)
         # Read special token config
-        import json
         tokenizer_config_path = os.path.join(model_path, "tokenizer_config.json")
         special_tokens = {}
         if os.path.exists(tokenizer_config_path):
