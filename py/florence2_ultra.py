@@ -49,7 +49,7 @@ def _load_model_v5(model_path, attention, dtype):
     """Load Florence2 model for transformers >= 5.0.0"""
     log(f"[DEBUG] _load_model_v5 called with model_path={model_path}, attention={attention}, dtype={dtype}")
     from ..florence2_models.modeling_florence2 import Florence2ForConditionalGeneration, Florence2Config
-    from transformers import CLIPImageProcessor, BartTokenizerFast
+    from transformers import CLIPImageProcessor, AutoTokenizer
     from ..florence2_models.processing_florence2 import Florence2Processor
     from accelerate import init_empty_weights
     from accelerate.utils import set_module_tensor_to_device
@@ -108,7 +108,7 @@ def _load_model_v5(model_path, attention, dtype):
     image_processor.image_seq_length = 577
 
     log(f"[DEBUG] Loading tokenizer from {model_path}")
-    tokenizer = BartTokenizerFast.from_pretrained(model_path)
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
     log(f"[DEBUG] Creating Florence2Processor")
     processor = Florence2Processor(image_processor=image_processor, tokenizer=tokenizer)
     log(f"[DEBUG] _load_model_v5 completed successfully")
