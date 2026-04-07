@@ -48,9 +48,9 @@ def fixed_get_imports(filename) -> list[str]:
 def _load_model_v5(model_path, attention, dtype):
     """Load Florence2 model for transformers >= 5.0.0"""
     log(f"[DEBUG] _load_model_v5 called with model_path={model_path}, attention={attention}, dtype={dtype}")
-    from florence2_models.modeling_florence2 import Florence2ForConditionalGeneration, Florence2Config
+    from ..florence2_models.modeling_florence2 import Florence2ForConditionalGeneration, Florence2Config
     from transformers import CLIPImageProcessor, BartTokenizerFast
-    from florence2_models.processing_florence2 import Florence2Processor
+    from ..florence2_models.processing_florence2 import Florence2Processor
     from accelerate import init_empty_weights
     from accelerate.utils import set_module_tensor_to_device
     from comfy.utils import load_torch_file
