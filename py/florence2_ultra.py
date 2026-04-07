@@ -111,8 +111,25 @@ def _load_model_v5(model_path, attention, dtype):
     try:
         tokenizer = AutoTokenizer.from_pretrained(model_path)
     except TypeError as e:
-        log(f"[DEBUG] Fast tokenizer failed ({e}), trying slow tokenizer", message_type='warning')
-        tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
+        log(f"[DEBUG] AutoTokenizer failed ({e}), loading from tokenizer.json directly", message_type='warning')
+        from tokenizers import Tokenizer as TokenizerFast
+        from transformers import PreTrainedTokenizerFast
+        tokenizer_json = os.path.join(model_path, "tokenizer.json")
+        base_tokenizer = TokenizerFast.from_file(tokenizer_json)
+        # Read special token config
+        import json
+        tokenizer_config_path = os.path.join(model_path, "tokenizer_config.json")
+        special_tokens = {}
+        if os.path.exists(tokenizer_config_path):
+            with open(tokenizer_config_path, 'r') as f:
+                tc = json.load(f)
+            for key in ('bos_token', 'eos_token', 'unk_token', 'pad_token', 'sep_token', 'cls_token', 'mask_token'):
+                val = tc.get(key)
+                if isinstance(val, dict):
+                    val = val.get('content', None)
+                if val is not None:
+                    special_tokens[key] = val
+        tokenizer = PreTrainedTokenizerFast(tokenizer_object=base_tokenizer, **special_tokens)
     log(f"[DEBUG] Creating Florence2Processor")
     processor = Florence2Processor(image_processor=image_processor, tokenizer=tokenizer)
     log(f"[DEBUG] _load_model_v5 completed successfully")
