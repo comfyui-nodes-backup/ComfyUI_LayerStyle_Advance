@@ -108,7 +108,11 @@ def _load_model_v5(model_path, attention, dtype):
     image_processor.image_seq_length = 577
 
     log(f"[DEBUG] Loading tokenizer from {model_path}")
-    tokenizer = AutoTokenizer.from_pretrained(model_path)
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(model_path)
+    except TypeError as e:
+        log(f"[DEBUG] Fast tokenizer failed ({e}), trying slow tokenizer", message_type='warning')
+        tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
     log(f"[DEBUG] Creating Florence2Processor")
     processor = Florence2Processor(image_processor=image_processor, tokenizer=tokenizer)
     log(f"[DEBUG] _load_model_v5 completed successfully")
