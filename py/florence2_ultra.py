@@ -47,6 +47,7 @@ def fixed_get_imports(filename) -> list[str]:
 
 def _load_model_v5(model_path, attention, dtype):
     """Load Florence2 model for transformers >= 5.0.0"""
+    log(f"[DEBUG] _load_model_v5 called with model_path={model_path}, attention={attention}, dtype={dtype}")
     from florence2_models.modeling_florence2 import Florence2ForConditionalGeneration, Florence2Config
     from transformers import CLIPImageProcessor, BartTokenizerFast
     from florence2_models.processing_florence2 import Florence2Processor
@@ -55,9 +56,12 @@ def _load_model_v5(model_path, attention, dtype):
     from comfy.utils import load_torch_file
 
     offload_device = comfy.model_management.unet_offload_device()
+    log(f"[DEBUG] offload_device={offload_device}")
 
+    log(f"[DEBUG] Loading Florence2Config from {model_path}")
     config = Florence2Config.from_pretrained(model_path)
     config._attn_implementation = attention
+    log(f"[DEBUG] Config loaded, initializing empty model")
     with init_empty_weights():
         model = Florence2ForConditionalGeneration(config)
 
@@ -65,7 +69,9 @@ def _load_model_v5(model_path, attention, dtype):
     if not os.path.exists(checkpoint_path):
         checkpoint_path = os.path.join(model_path, "pytorch_model.bin")
     if os.path.exists(checkpoint_path):
+        log(f"[DEBUG] Loading weights from {checkpoint_path}")
         state_dict = load_torch_file(checkpoint_path)
+        log(f"[DEBUG] Loaded {len(state_dict)} keys from checkpoint")
     else:
         raise FileNotFoundError(f"No model weights found at {model_path}")
 
@@ -74,13 +80,17 @@ def _load_model_v5(model_path, attention, dtype):
         key_mapping["language_model.model.encoder.embed_tokens.weight"] = "language_model.model.shared.weight"
         key_mapping["language_model.model.decoder.embed_tokens.weight"] = "language_model.model.shared.weight"
 
+    missing_keys = []
     for name, param in model.named_parameters():
         actual_key = key_mapping.get(name, name)
         if actual_key in state_dict:
             set_module_tensor_to_device(model, name, offload_device, value=state_dict[actual_key].to(dtype))
         else:
-            print(f"Parameter {name} not found in state_dict.")
+            missing_keys.append(name)
+    if missing_keys:
+        log(f"[DEBUG] {len(missing_keys)} parameters not found in state_dict: {missing_keys[:5]}{'...' if len(missing_keys) > 5 else ''}", message_type='warning')
 
+    log(f"[DEBUG] Tying weights and finalizing model")
     model.language_model.tie_weights()
     model = model.eval().to(dtype).to(offload_device)
 
@@ -97,8 +107,11 @@ def _load_model_v5(model_path, attention, dtype):
     )
     image_processor.image_seq_length = 577
 
+    log(f"[DEBUG] Loading tokenizer from {model_path}")
     tokenizer = BartTokenizerFast.from_pretrained(model_path)
+    log(f"[DEBUG] Creating Florence2Processor")
     processor = Florence2Processor(image_processor=image_processor, tokenizer=tokenizer)
+    log(f"[DEBUG] _load_model_v5 completed successfully")
     return model, processor
 
 def load_model(ver):
@@ -114,8 +127,13 @@ def load_model(ver):
         from huggingface_hub import snapshot_download
         snapshot_download(repo_id=repo_id, local_dir=model_path, ignore_patterns=["*.md", "*.txt"])
 
+    log(f"[DEBUG] transformers version: {transformers.__version__}, v5+ path: {version.parse(transformers.__version__) >= version.parse('5.0.0')}")
+    log(f"[DEBUG] model_path: {model_path}, exists: {os.path.exists(model_path)}")
+
     if version.parse(transformers.__version__) >= version.parse('5.0.0'):
+        log(f"[DEBUG] Using transformers v5 loading path")
         model, processor = _load_model_v5(model_path, attention, torch.float32)
+        log(f"[DEBUG] Model loaded, model type: {type(model)}, processor type: {type(processor)}")
         return (model.to(device), processor)
 
     try:
