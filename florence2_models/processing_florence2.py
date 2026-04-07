@@ -200,18 +200,20 @@ class Florence2Processor(ProcessorMixin):
         elif isinstance(text, list) and _is_str_or_image(text[0]):
             pass
 
-        pixel_values = self.image_processor(
-            images,
-            do_resize=do_resize,
-            do_normalize=do_normalize,
-            return_tensors=return_tensors,
-            image_mean=image_mean,
-            image_std=image_std,
-            input_data_format=input_data_format,
-            data_format=data_format,
-            resample=resample,
-            do_convert_rgb=do_convert_rgb,
-        )["pixel_values"]
+        # Filter out None values so CLIPImageProcessor uses its configured defaults
+        image_processor_kwargs = {
+            "do_resize": do_resize,
+            "do_normalize": do_normalize,
+            "return_tensors": return_tensors,
+            "image_mean": image_mean,
+            "image_std": image_std,
+            "input_data_format": input_data_format,
+            "data_format": data_format,
+            "resample": resample,
+            "do_convert_rgb": do_convert_rgb,
+        }
+        image_processor_kwargs = {k: v for k, v in image_processor_kwargs.items() if v is not None}
+        pixel_values = self.image_processor(images, **image_processor_kwargs)["pixel_values"]
 
         if max_length is not None:
             max_length -= self.image_seq_length  # max_length has to account for the image tokens
