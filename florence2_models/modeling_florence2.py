@@ -61,8 +61,6 @@ from transformers.modeling_outputs import (
     Seq2SeqLMOutput,
     Seq2SeqModelOutput,
 )
-import transformers
-from packaging import version
 
 
 if is_flash_attn_2_available():
@@ -1936,8 +1934,7 @@ class Florence2Decoder(Florence2LanguagePreTrainedModel):
 
 
 class Florence2LanguageModel(Florence2LanguagePreTrainedModel):
-    if not version.parse(transformers.__version__) >= version.parse('5.0.0'):
-        _tied_weights_keys = ["encoder.embed_tokens.weight", "decoder.embed_tokens.weight"]
+    _tied_weights_keys = ["encoder.embed_tokens.weight", "decoder.embed_tokens.weight"]
 
     def __init__(self, config: Florence2LanguageConfig):
         super().__init__(config)
@@ -2060,8 +2057,7 @@ class Florence2LanguageModel(Florence2LanguagePreTrainedModel):
 
 class Florence2LanguageForConditionalGeneration(Florence2LanguagePreTrainedModel, GenerationMixin):
     base_model_prefix = "model"
-    if not version.parse(transformers.__version__) >= version.parse('5.0.0'):
-        _tied_weights_keys = ["encoder.embed_tokens.weight", "decoder.embed_tokens.weight", "lm_head.weight"]
+    _tied_weights_keys = ["encoder.embed_tokens.weight", "decoder.embed_tokens.weight", "lm_head.weight"]
     _keys_to_ignore_on_load_missing = ["final_logits_bias"]
 
     def __init__(self, config: Florence2LanguageConfig):
@@ -2071,19 +2067,13 @@ class Florence2LanguageForConditionalGeneration(Florence2LanguagePreTrainedModel
         self.lm_head = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
 
         # Initialize weights and apply final processing
-        if not version.parse(transformers.__version__) >= version.parse('5.0.0'):
-            self.post_init()
-
+        self.post_init()
+    
     def _tie_weights(self):
         if self.config.tie_word_embeddings:
             self._tie_or_clone_weights(self.model.encoder.embed_tokens, self.model.shared)
             self._tie_or_clone_weights(self.model.decoder.embed_tokens, self.model.shared)
             self._tie_or_clone_weights(self.lm_head, self.model.shared)
-
-    def tie_weights(self):
-        self.model.encoder.embed_tokens.weight = self.model.shared.weight
-        self.model.decoder.embed_tokens.weight = self.model.shared.weight
-        self.lm_head.weight = self.model.shared.weight
 
     def get_encoder(self):
         return self.model.get_encoder()
@@ -2546,8 +2536,7 @@ class Florence2VisionModelWithProjection(Florence2PreTrainedModel):
     FLORENCE2_START_DOCSTRING,
 )
 class Florence2ForConditionalGeneration(Florence2PreTrainedModel, GenerationMixin):
-    if not version.parse(transformers.__version__) >= version.parse('5.0.0'):
-        _tied_weights_keys = ["language_model.encoder.embed_tokens.weight", "language_model.decoder.embed_tokens.weight", "language_model.lm_head.weight"]
+    _tied_weights_keys = ["language_model.encoder.embed_tokens.weight", "language_model.decoder.embed_tokens.weight", "language_model.lm_head.weight"]
     def __init__(self, config: Florence2Config):
         super().__init__(config)
         assert config.vision_config.model_type == 'davit', 'only DaViT is supported for now'
